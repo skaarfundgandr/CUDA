@@ -1,0 +1,2 @@
+# CUDA Projects
+This repository contains a collection of projects and examples that utilize NVIDIA's CUDA (Compute Unified Device Architecture) for parallel computing on GPUs. Each project demonstrates different aspects of CUDA programming, from basic concepts to advanced techniques.
