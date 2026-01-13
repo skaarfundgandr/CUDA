@@ -3,7 +3,8 @@ project(vecAdd CUDA)
 
 set(CMAKE_CUDA_STANDARD 20)
 
-add_executable(vecAdd main.cu)
+add_executable(vecAdd src/main.cu
+        src/vecAdd.cu)
 
 set_target_properties(vecAdd PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON)

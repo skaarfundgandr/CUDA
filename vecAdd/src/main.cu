@@ -1,6 +1,9 @@
 #include <cassert>
 #include <iostream>
 
+__global__ void vecAddKern1D(const float *A, const float *B, float *C, size_t N);
+__global__ void vecAddKern2D(const float *A, const float *B, float *C, size_t N);
+
 inline cudaError_t checkCuda(cudaError_t result) {
     if (result != cudaSuccess) {
         std::cerr << "CUDA Runtime Error: " << cudaGetErrorString(result) << std::endl;
@@ -9,23 +12,13 @@ inline cudaError_t checkCuda(cudaError_t result) {
     return result;
 }
 
-__global__ void vecAddKern(const float *A, const float *B, float *C, int N) {
-    const unsigned idx = blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned stride = blockDim.x * gridDim.x;
-
-    #pragma unroll
-    for (unsigned i = idx; i < N; i += stride) {
-        C[i] = A[i] + B[i];
-    }
-}
-
 int main() {
     int device, SM_Count;
 
     checkCuda(cudaGetDevice(&device));
     checkCuda(cudaDeviceGetAttribute(&SM_Count, cudaDevAttrMultiProcessorCount, device));
 
-    constexpr int N = 1 << 20; // 1M elements
+    constexpr size_t N = 1 << 28; // 268,435,456 elements
     size_t size = N * sizeof(float);
 
     // Allocate and initialize host arrays
@@ -40,8 +33,6 @@ int main() {
 
     // Device memory allocation
     float *d_A, *d_B, *d_C;
-    constexpr int threads = 256;
-    const int blocks = SM_Count * 32;
 
     checkCuda(cudaMalloc(&d_A, size));
     checkCuda(cudaMalloc(&d_B, size));
@@ -51,10 +42,12 @@ int main() {
     checkCuda(cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice));
     checkCuda(cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice));
     // Launch kernel
-    vecAddKern<<<blocks, threads>>>(d_A, d_B, d_C, N);
-
+    constexpr int threads = 256; // Threads per block
+    const int blocks = SM_Count * 32; // Total blocks
+    vecAddKern1D<<<blocks, threads>>>(d_A, d_B, d_C, N);
+    // Error checking
     checkCuda(cudaGetLastError());
-    checkCuda(cudaDeviceSynchronize());
+    checkCuda(cudaDeviceSynchronize()); // Synchronize device with host
     // Copy result back to host
     checkCuda(cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost));
 
